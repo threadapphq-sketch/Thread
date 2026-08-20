@@ -1,0 +1,2020 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread — keep it unbroken</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4FD8FF">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --ink:#08090C;
+    --card:#131519;
+    --card-hi:#1C1F26;
+    --paper:#F3F6FA;
+    --paper-dim:#8A93A3;
+    --flame:#4FD8FF;
+    --flame-ink:#04141A;
+    --moss:#4CD97B;
+    --rust:#FF5C5C;
+    --rust-dim:#2A1414;
+    --line:#22262E;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    min-height:100vh;
+    padding:32px 18px 60px;
+  }
+  .wrap{max-width:560px;margin:0 auto;}
+
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--flame);
+    margin-bottom:6px;
+  }
+  h1{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:34px;
+    margin:0 0 6px;
+    letter-spacing:-.01em;
+  }
+  .sub{color:var(--paper-dim);font-size:14.5px;margin:0;}
+
+  /* streak thread */
+  .thread-card{
+    background:var(--card);
+    border-radius:18px;
+    padding:22px 20px 18px;
+    margin-bottom:18px;
+    border:1px solid var(--line);
+  }
+  .streak-row{display:flex;align-items:baseline;gap:10px;margin-bottom:16px;}
+  .streak-num{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:48px;
+    color:var(--flame);
+    line-height:1;
+    text-shadow:0 0 18px rgba(79,216,255,.45);
+  }
+  .streak-label{color:var(--paper-dim);font-size:14px;}
+  .thread{
+    display:flex;
+    gap:7px;
+    overflow-x:auto;
+    padding-bottom:4px;
+  }
+  .knot{
+    flex:0 0 auto;
+    width:15px;height:15px;
+    border-radius:50%;
+    border:2px solid var(--line);
+    position:relative;
+  }
+  .knot.done{background:var(--flame);border-color:var(--flame);}
+  .knot.missed{background:transparent;border-color:var(--rust);}
+  .knot.recovered{background:transparent;border:2px dashed var(--moss);}
+  .knot.today{border-color:var(--paper-dim);}
+  .knot.future{border-color:var(--line);opacity:.35;}
+
+  /* recovery banner */
+  .recovery{
+    background:var(--rust-dim);
+    border:1px solid var(--rust);
+    border-radius:18px;
+    padding:20px;
+    margin-bottom:18px;
+  }
+  .recovery .eyebrow{color:var(--rust);}
+  .recovery h2{
+    font-family:'Fraunces', serif;
+    font-size:20px;
+    margin:2px 0 8px;
+    font-weight:600;
+  }
+  .recovery p{color:var(--paper);font-size:14.5px;line-height:1.5;margin:0 0 14px;}
+  .recovery-check{
+    display:flex;align-items:flex-start;gap:10px;
+    background:rgba(0,0,0,.18);
+    border-radius:12px;
+    padding:12px 14px;
+    cursor:pointer;
+  }
+  .recovery-check input{margin-top:2px;width:17px;height:17px;accent-color:var(--moss);}
+  .recovery-check span{font-size:14px;line-height:1.4;}
+  .recovery-note{font-size:12px;color:#e0b7ac;margin-top:10px;}
+
+  /* tasks */
+  .section-title{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    margin:0 0 10px;
+  }
+  .task-card{
+    background:var(--card);
+    border-radius:18px;
+    border:1px solid var(--line);
+    overflow:hidden;
+    margin-bottom:14px;
+  }
+  .task{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--line);
+  }
+  .task:last-child{border-bottom:none;}
+  .task input[type=checkbox]{
+    width:19px;height:19px;flex:0 0 auto;
+    accent-color:var(--moss);
+    cursor:pointer;
+  }
+  .task span{flex:1;font-size:15px;}
+  .task.done span{color:var(--paper-dim);text-decoration:line-through;}
+  .task button{
+    background:none;border:none;color:var(--paper-dim);
+    cursor:pointer;font-size:16px;padding:4px 8px;
+    opacity:0;transition:opacity .15s;
+  }
+  .task:hover button{opacity:1;}
+  .empty{
+    padding:26px 16px;text-align:center;color:var(--paper-dim);font-size:14px;
+  }
+
+  .add-row{display:flex;gap:8px;}
+  .add-row input{
+    flex:1;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    color:var(--paper);
+    font-size:14.5px;
+    font-family:inherit;
+  }
+  .add-row input:focus{outline:2px solid var(--flame);outline-offset:1px;}
+  .add-row button{
+    background:var(--flame);
+    border:none;
+    border-radius:12px;
+    padding:0 18px;
+    color:var(--flame-ink);
+    font-weight:600;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+  .add-row button:active{transform:translateY(1px);}
+
+  .progress-line{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12.5px;
+    color:var(--paper-dim);
+    margin-top:14px;
+  }
+  .capacity-note{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--paper-dim);
+    margin-top:4px;
+  }
+  .capacity-note.over{color:var(--rust);}
+
+  .mit-btn{
+    background:none;border:none;
+    color:var(--line);
+    font-size:17px;
+    cursor:pointer;
+    padding:4px 2px;
+    flex:0 0 auto;
+    line-height:1;
+  }
+  .mit-btn.on{color:var(--flame);}
+
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(10,11,16,.74);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  .modal{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:26px 24px;
+    max-width:420px;width:100%;
+  }
+  .modal .eyebrow{color:var(--flame);}
+  .modal h2{
+    font-family:'Fraunces', serif;
+    font-size:21px;
+    margin:4px 0 10px;
+    font-weight:600;
+    line-height:1.25;
+  }
+  .modal p{color:var(--paper-dim);font-size:14px;line-height:1.55;margin:0 0 18px;}
+  .opt-btn{
+    display:block;width:100%;text-align:left;
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:13px 15px;
+    margin-bottom:9px;
+    color:var(--paper);
+    font-size:14.5px;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .opt-btn:hover{border-color:var(--flame);}
+  .opt-btn small{display:block;color:var(--paper-dim);font-size:12px;margin-top:2px;}
+  .modal .primary-btn{
+    margin-top:6px;width:100%;
+    background:var(--flame);
+    border:none;border-radius:12px;
+    padding:13px;
+    color:var(--flame-ink);
+    font-weight:600;
+    font-size:14.5px;
+    cursor:pointer;
+  }
+
+  footer{
+    margin-top:36px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    font-size:12.5px;
+    color:var(--paper-dim);
+    line-height:1.6;
+  }
+  footer strong{color:var(--paper);}
+
+  /* medals */
+  .medal-shelf{
+    display:flex;
+    gap:9px;
+    overflow-x:auto;
+    padding:2px 2px 8px;
+  }
+  .medal{
+    flex:0 0 auto;
+    width:40px;height:40px;
+    border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    font-weight:600;
+    color:#fff;
+    opacity:.28;
+    border:2px solid transparent;
+    position:relative;
+  }
+  .medal.earned{opacity:1;box-shadow:0 0 0 2px rgba(255,255,255,.12);}
+  .medal.next{opacity:.55;border-color:var(--paper-dim);border-style:dashed;}
+
+  .toast{
+    position:fixed;
+    left:50%;bottom:26px;
+    transform:translateX(-50%);
+    background:var(--card-hi);
+    border:1px solid var(--flame);
+    border-radius:14px;
+    padding:13px 18px;
+    font-size:14px;
+    display:flex;align-items:center;gap:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    z-index:60;
+    max-width:90vw;
+  }
+  .toast .medal{width:28px;height:28px;font-size:9px;opacity:1;flex:0 0 auto;}
+
+  .summary-banner{
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    margin-bottom:16px;
+    font-size:14px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .summary-banner button{
+    background:none;border:none;color:var(--paper-dim);
+    font-size:16px;cursor:pointer;flex:0 0 auto;
+  }
+
+  .stats-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px 20px;
+    margin-bottom:18px;
+    display:flex;
+    gap:22px;
+    flex-wrap:wrap;
+  }
+  .stat{min-width:80px;}
+  .stat-num{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:24px;
+    color:var(--paper);
+  }
+  .stat-label{font-size:11.5px;color:var(--paper-dim);margin-top:2px;}
+
+  @keyframes checkPulse{
+    0%{transform:scale(1);}
+    40%{transform:scale(1.35);}
+    100%{transform:scale(1);}
+  }
+  .task input[type=checkbox]:checked{animation:checkPulse .3s ease;}
+
+  .task-card.celebrate{animation:cardFlash .6s ease;}
+  @keyframes cardFlash{
+    0%{box-shadow:0 0 0 0 rgba(227,162,61,.5);}
+    100%{box-shadow:0 0 0 0 rgba(227,162,61,0);}
+  }
+
+  .account-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:16px 18px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+  }
+  .account-card .note{font-size:12.5px;color:var(--paper-dim);line-height:1.5;}
+  .google-btn{
+    background:var(--paper);
+    color:var(--flame-ink);
+    border:none;
+    border-radius:10px;
+    padding:9px 14px;
+    font-size:13.5px;
+    font-weight:600;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+
+  /* routines */
+  .routine-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 16px;
+    margin-bottom:10px;
+  }
+  .routine-head{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+  }
+  .routine-name{font-size:15px;font-weight:600;}
+  .routine-sub{font-size:12px;color:var(--paper-dim);margin-top:2px;}
+  .routine-actions{display:flex;align-items:center;gap:10px;}
+  .routine-actions button{
+    background:none;border:none;color:var(--paper-dim);
+    cursor:pointer;font-size:15px;padding:2px 4px;
+  }
+  .switch{
+    width:38px;height:22px;
+    border-radius:999px;
+    background:var(--line);
+    position:relative;
+    cursor:pointer;
+    flex:0 0 auto;
+    transition:background .15s;
+  }
+  .switch.on{background:var(--flame);}
+  .switch::after{
+    content:'';
+    position:absolute;
+    top:2px;left:2px;
+    width:18px;height:18px;
+    border-radius:50%;
+    background:var(--ink);
+    transition:left .15s;
+  }
+  .switch.on::after{left:18px;background:var(--flame-ink);}
+  .routine-tasks{
+    margin-top:8px;
+    font-size:12.5px;
+    color:var(--paper-dim);
+    line-height:1.6;
+  }
+  .new-routine-btn{
+    display:block;width:100%;
+    background:var(--card);
+    border:1px dashed var(--line);
+    border-radius:16px;
+    padding:13px;
+    color:var(--paper-dim);
+    font-size:14px;
+    cursor:pointer;
+    font-family:inherit;
+    margin-bottom:16px;
+  }
+  .new-routine-btn:hover{border-color:var(--flame);color:var(--paper);}
+  .routine-form{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:16px;
+  }
+  .routine-form label{
+    display:block;font-size:12px;color:var(--paper-dim);
+    margin-bottom:5px;margin-top:12px;
+  }
+  .routine-form label:first-child{margin-top:0;}
+  .routine-form input, .routine-form textarea{
+    width:100%;
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    color:var(--paper);
+    font-size:14px;
+    font-family:inherit;
+    resize:vertical;
+  }
+  .routine-form textarea{min-height:80px;}
+  .routine-form-actions{display:flex;gap:8px;margin-top:14px;}
+  .routine-form-actions button{
+    border:none;border-radius:10px;padding:10px 16px;
+    font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  }
+  .routine-form-actions .primary{background:var(--flame);color:var(--flame-ink);}
+  .routine-form-actions .cancel{background:var(--card-hi);color:var(--paper-dim);}
+
+  /* nav */
+  .site-nav{
+    display:flex;
+    gap:6px;
+    margin-bottom:22px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:2px;
+  }
+  .nav-btn{
+    background:none;
+    border:none;
+    color:var(--paper-dim);
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:14px;
+    font-weight:500;
+    padding:9px 4px;
+    margin-right:14px;
+    cursor:pointer;
+    border-bottom:2px solid transparent;
+  }
+  .nav-btn.active{color:var(--paper);border-bottom-color:var(--flame);}
+
+  /* about page */
+  .about-hero{margin-bottom:26px;}
+  .about-hero h2{
+    font-family:'Fraunces', serif;
+    font-weight:600;
+    font-size:26px;
+    line-height:1.25;
+    margin:6px 0 12px;
+  }
+  .about-lede{color:var(--paper-dim);font-size:15px;line-height:1.6;margin:0;}
+  .about-block{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:20px 22px;
+    margin-bottom:14px;
+  }
+  .about-block h3{
+    font-family:'Fraunces', serif;
+    font-size:17px;
+    font-weight:600;
+    margin:0 0 10px;
+  }
+  .about-block p{color:var(--paper-dim);font-size:14.5px;line-height:1.6;margin:0;}
+  .about-list{margin:0;padding-left:18px;color:var(--paper-dim);font-size:14.5px;line-height:1.8;}
+  .about-list li{margin-bottom:2px;}
+
+  /* focus timer */
+  .focus-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:34px 24px;
+    text-align:center;
+  }
+  .focus-mode{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    letter-spacing:.1em;
+    text-transform:uppercase;
+    color:var(--paper-dim);
+    margin-bottom:10px;
+  }
+  .focus-time{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:64px;
+    color:var(--flame);
+    text-shadow:0 0 22px rgba(79,216,255,.4);
+    line-height:1;
+    margin-bottom:22px;
+  }
+  .focus-controls{display:flex;justify-content:center;gap:10px;margin-bottom:16px;}
+  .focus-btn{
+    border:1px solid var(--line);
+    background:var(--card-hi);
+    color:var(--paper);
+    border-radius:12px;
+    padding:11px 20px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    font-family:inherit;
+  }
+  .focus-btn.primary{background:var(--flame);color:var(--flame-ink);border:none;}
+  .focus-settings{
+    display:flex;
+    justify-content:center;
+    gap:18px;
+    flex-wrap:wrap;
+    margin-bottom:16px;
+    padding-top:14px;
+    border-top:1px solid var(--line);
+  }
+  .focus-settings label{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:var(--paper-dim);
+  }
+  .focus-settings input{
+    width:56px;
+    text-align:center;
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 4px;
+    color:var(--paper);
+    font-size:14px;
+    font-family:inherit;
+  }
+  .focus-note{color:var(--paper-dim);font-size:12.5px;line-height:1.5;max-width:320px;margin:0 auto;}
+
+  .spark-row{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
+  .spark-count{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:38px;
+    color:var(--flame);
+  }
+  .spark-label{color:var(--paper-dim);font-size:13px;}
+  .spark-grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .spark{
+    width:16px;height:16px;
+    border-radius:50%;
+    background:var(--flame);
+    box-shadow:0 0 8px rgba(79,216,255,.6);
+  }
+
+  /* leaderboard */
+  .lb-note{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 16px;
+    font-size:12.5px;
+    color:var(--paper-dim);
+    line-height:1.5;
+  }
+  .lb-name-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 18px;
+    margin-top:14px;
+  }
+  .lb-name-card label{display:block;font-size:12px;color:var(--paper-dim);margin-bottom:8px;}
+  .lb-name-row{display:flex;gap:8px;}
+  .lb-name-row input{
+    flex:1;
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:10px 12px;
+    color:var(--paper);
+    font-size:14px;
+    font-family:inherit;
+  }
+  .lb-row{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 16px;
+    margin-bottom:8px;
+  }
+  .lb-row.me{border-color:var(--flame);}
+  .lb-rank{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:17px;
+    color:var(--paper-dim);
+    width:26px;
+    flex:0 0 auto;
+  }
+  .lb-row.me .lb-rank{color:var(--flame);}
+  .lb-info{flex:1;min-width:0;}
+  .lb-name{font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lb-sub{font-size:11.5px;color:var(--paper-dim);margin-top:2px;}
+  .lb-total{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:20px;
+    color:var(--flame);
+    flex:0 0 auto;
+  }
+
+  /* support chat */
+  .chat-window{
+    height:380px;
+    overflow-y:auto;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    margin-top:14px;
+  }
+  .chat-bubble{
+    max-width:82%;
+    padding:10px 14px;
+    border-radius:14px;
+    font-size:14px;
+    line-height:1.55;
+    white-space:pre-wrap;
+  }
+  .chat-bubble.user{align-self:flex-end;background:var(--flame);color:var(--flame-ink);}
+  .chat-bubble.assistant{align-self:flex-start;background:var(--card-hi);color:var(--paper);}
+  .chat-bubble.typing{align-self:flex-start;background:var(--card-hi);color:var(--paper-dim);font-style:italic;}
+  .chat-input-row{display:flex;gap:8px;margin-top:10px;}
+  .chat-input-row input{
+    flex:1;
+    background:var(--card-hi);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:11px 13px;
+    color:var(--paper);
+    font-size:14px;
+    font-family:inherit;
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="mainWrap">
+
+  <header>
+    <div class="eyebrow">Day by day</div>
+    <h1>Thread</h1>
+    <p class="sub">Keep the thread unbroken. Miss a day, and you get one shot to save it.</p>
+  </header>
+
+  <nav class="site-nav">
+    <button class="nav-btn active" id="navApp" data-page="app">Home</button>
+    <button class="nav-btn" id="navFocus" data-page="focus">Focus</button>
+    <button class="nav-btn" id="navLeaderboard" data-page="leaderboard">Leaderboard</button>
+    <button class="nav-btn" id="navSupport" data-page="support">Support</button>
+    <button class="nav-btn" id="navAbout" data-page="about">About Us</button>
+  </nav>
+
+  <div id="appPage">
+
+  <div class="account-card" id="accountCard"></div>
+
+  <div id="summarySlot"></div>
+
+  <div class="thread-card">
+    <div class="streak-row">
+      <div class="streak-num" id="streakNum">0</div>
+      <div class="streak-label">day streak</div>
+    </div>
+    <div class="thread" id="thread"></div>
+  </div>
+
+  <div class="section-title">Medals</div>
+  <div class="thread-card">
+    <div class="medal-shelf" id="medalShelf"></div>
+  </div>
+
+  <div class="stats-card" id="statsCard"></div>
+
+  <div id="recoverySlot"></div>
+
+  <div class="section-title">Today</div>
+  <div class="task-card" id="taskCard"></div>
+
+  <div class="add-row">
+    <input type="text" id="newTask" placeholder="Add something to today's list…" maxlength="80">
+    <button id="addBtn">Add</button>
+  </div>
+  <div class="progress-line" id="progressLine"></div>
+  <div class="capacity-note" id="capacityNote"></div>
+
+  <div class="section-title" style="margin-top:26px;">Routines</div>
+  <div id="routinesSlot"></div>
+  <div id="routineFormSlot"></div>
+
+  <footer>
+    <strong>Install as an app:</strong> open this page on your phone, then use your browser's
+    "Add to Home Screen" option. It'll sit on your home screen with its own icon and open
+    straight into this site — no app store needed.
+    <br><br>
+    <strong>Privacy:</strong> your tasks and streaks stay on your account — nothing is sold or shared.
+    <br><br>
+    <strong>Google Sign-In:</strong> the real integration is already wired into this file — it's just
+    waiting on a Client ID. Once this is hosted on your own domain, register an OAuth client in
+    Google Cloud Console for that exact domain, drop the Client ID into the `GOOGLE_CLIENT_ID`
+    constant near the top of the script, and the "Continue with Google" button will start working.
+    It can't run inside this preview because Google only allows sign-in from a verified, fixed
+    domain, and this preview doesn't have one.
+    <div style="margin-top:10px;"><a href="#" id="redoSetup" style="color:var(--flame);">Redo the setup questions</a></div>
+    <div style="margin-top:10px;">
+      <a href="privacy.html" style="color:var(--paper-dim);">Privacy Policy</a>
+      &nbsp;·&nbsp;
+      <a href="terms.html" style="color:var(--paper-dim);">Terms of Service</a>
+    </div>
+  </footer>
+
+  </div>
+
+  <div id="aboutPage" style="display:none;">
+    <div class="about-hero">
+      <div class="eyebrow">Our story</div>
+      <h2>Built for people who start strong and fade fast</h2>
+      <p class="about-lede">Thread exists because most to-do apps punish a single bad day with a
+        reset to zero — and that's exactly the moment people give up for good.</p>
+    </div>
+
+    <div class="about-block">
+      <h3>Why we built this</h3>
+      <p>Most of us don't fail because we lack ambition. We fail because the plan for tomorrow
+        looks exactly like the plan for today: too long, too vague, and unforgiving the moment
+        life gets in the way. Thread is built around a simpler idea — a list you can actually
+        finish, and a second chance on the days you can't.</p>
+    </div>
+
+    <div class="about-block">
+      <h3>What we believe</h3>
+      <ul class="about-list">
+        <li>A shorter, realistic list beats a long aspirational one, every time.</li>
+        <li>Missing a day shouldn't erase your progress — it should offer a way back.</li>
+        <li>Progress should be visible: a streak, a medal, a number that moves.</li>
+        <li>Your data is yours. We don't sell it, and we don't need to.</li>
+      </ul>
+    </div>
+
+    <div class="about-block">
+      <h3>How it works</h3>
+      <p>Onboarding sizes your daily list to your actual capacity instead of your ambition.
+        Routines let you bundle recurring tasks — like a morning routine — on or off in one tap.
+        Medals mark real milestones from day 10 to day 150. And if you miss a day, a recovery
+        quest gives your streak one honest shot at survival instead of taking it from you outright.</p>
+    </div>
+
+    <div class="about-block">
+      <h3>Get in touch</h3>
+      <p>Thread is a work in progress, built and refined based on what actually helps people stay
+        consistent. If something isn't working for you, that's useful to know.</p>
+    </div>
+  </div>
+
+  <div id="focusPage" style="display:none;">
+    <div class="focus-card">
+      <div class="focus-mode" id="focusModeLabel">Focus session</div>
+      <div class="focus-time" id="focusTimeDisplay">25:00</div>
+      <div class="focus-controls">
+        <button class="focus-btn primary" id="focusStartPause">Start</button>
+        <button class="focus-btn" id="focusReset">Reset</button>
+        <button class="focus-btn" id="focusSkip">Skip</button>
+      </div>
+      <div class="focus-settings">
+        <label>Focus
+          <input type="number" id="focusLenInput" min="1" max="180" value="25"> min
+        </label>
+        <label>Short break
+          <input type="number" id="shortLenInput" min="1" max="60" value="5"> min
+        </label>
+        <label>Long break
+          <input type="number" id="longLenInput" min="1" max="90" value="15"> min
+        </label>
+      </div>
+      <div class="focus-note">Runs while this tab is open. Change the lengths any time — a change applies the moment you're not mid-session in that mode, or the next time that mode starts.</div>
+    </div>
+
+    <div class="section-title" style="margin-top:22px;">Today's sparks</div>
+    <div class="thread-card">
+      <div class="spark-row">
+        <div class="spark-count" id="sparkCount">0</div>
+        <div class="spark-label">sessions completed today</div>
+      </div>
+      <div class="spark-grid" id="sparkGrid"></div>
+    </div>
+
+    <div class="section-title" style="margin-top:22px;">Focus medals</div>
+    <div class="thread-card">
+      <div class="medal-shelf" id="focusMedalShelf"></div>
+    </div>
+
+    <div class="stats-card" id="focusStatsCard"></div>
+  </div>
+
+  <div id="leaderboardPage" style="display:none;">
+    <div class="lb-note">
+      Combines your streak medals and focus medals into one score. Your display name and medal
+      counts are visible to everyone who uses this app — no other data is shared.
+    </div>
+
+    <div class="lb-name-card">
+      <label for="playerNameInput">Your display name</label>
+      <div class="lb-name-row">
+        <input type="text" id="playerNameInput" placeholder="Anonymous" maxlength="24">
+        <button class="focus-btn primary" id="savePlayerName">Save</button>
+      </div>
+    </div>
+
+    <div class="section-title" style="margin-top:22px;">Rankings</div>
+    <div id="leaderboardList"></div>
+    <button class="new-routine-btn" id="refreshLeaderboard">↻ Refresh</button>
+  </div>
+
+  <div id="supportPage" style="display:none;">
+    <div class="lb-note">
+      This assistant knows how Thread works and can see a quick snapshot of your current
+      progress (streak, task count, medals). It can't see your task list, notes, or account
+      details, and this conversation isn't saved once you leave the page.
+    </div>
+    <div class="chat-window" id="chatWindow"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="Ask a question about Thread…" maxlength="500">
+      <button class="focus-btn primary" id="chatSend">Send</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="toastSlot"></div>
+
+<div id="onboardOverlay"></div>
+
+<script>
+const STORAGE_KEY = 'thread-app-state';
+
+const QUESTS = [
+  "Finish today's full list, then do a 5-minute tidy of your workspace before you close this tab.",
+  "Finish today's full list, then write two sentences about what got in the way yesterday.",
+  "Finish today's full list, then do one of today's tasks twice — once for today, once for the day you missed.",
+  "Finish today's full list, then take a 10-minute walk before you check anything else.",
+  "Finish today's full list, then write tomorrow's list before you go to bed."
+];
+
+function todayStr(d = new Date()){
+  return d.toISOString().slice(0,10);
+}
+function addDays(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return todayStr(d);
+}
+function pickQuest(dateStr){
+  let h = 0;
+  for (const c of dateStr) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return QUESTS[h % QUESTS.length];
+}
+
+const HOURS_BANDS = [
+  { id: '1',  label: 'About 1 hour',      sub: 'a light day, one quick focus block',              min: 1, max: 2 },
+  { id: '4',  label: 'About 4 hours',     sub: 'a partial day, one deep block plus a few small ones', min: 2, max: 4 },
+  { id: '8',  label: 'A full 8-hour day', sub: 'a standard workday',                               min: 3, max: 6 },
+  { id: '12', label: '12+ hours',         sub: 'a long day spanning work and other commitments',   min: 5, max: 9 }
+];
+
+const MEDALS = [];
+for (let i = 1; i <= 15; i++){
+  const day = i * 10;
+  const hue = Math.round((i * 137.508) % 360); // golden-angle spread — every medal a distinct hue
+  MEDALS.push({ day, color: `hsl(${hue}, 62%, 50%)` });
+}
+
+// Focus medals — milestones for total cumulative time spent in focus sessions, in hours.
+const FOCUS_MEDALS = [];
+for (let i = 1; i <= 15; i++){
+  const hours = i * 10;
+  const hue = Math.round((i * 137.508 + 47) % 360); // offset hue so these read as a distinct set from streak medals
+  FOCUS_MEDALS.push({ hours, color: `hsl(${hue}, 62%, 50%)` });
+}
+
+// Replace with your real OAuth Client ID from Google Cloud Console once this is hosted
+// on a real domain (see the Google Sign-In setup steps). Sign-in stays disabled until then.
+const GOOGLE_CLIENT_ID = '954810154934-irhm3k4covulh1n58hphmbchkr1u5lab.apps.googleusercontent.com';
+
+function defaultState(){
+  return {
+    tasks: [
+      { id: 't1', text: 'Pick one thing to do today', mit: false, disabled: false }
+    ],
+    days: {},
+    streak: 0,
+    bestStreak: 0,
+    medalsEarned: [],
+    lastActiveDate: null,
+    recovery: null, // { frozenStreak, quest, missedDate, bonusDone }
+    onboarded: false,
+    capacity: null, // { hours, min, max }
+    _onboardStep: 'ask',
+    account: null, // { name, email } — set via Google sign-in on a real deployment
+    routines: [], // { id, name, taskIds: [...], active }
+    focusSettings: { focus: 25, short: 5, long: 15 }, // minutes
+    totalFocusMinutes: 0,
+    focusMedalsEarned: [],
+    playerId: null,   // generated once, identifies this browser's entry on the shared leaderboard
+    playerName: ''
+  };
+}
+
+let state = defaultState();
+let pendingMedalToasts = [];   // transient — not persisted
+let morningSummary = null;     // transient — computed once per session on rollover
+let prevAllDoneToday = false;  // tracks whether today's list just became fully complete
+let routineFormOpen = false;   // transient — not persisted
+
+// Focus timer — transient, resets on page reload (classic Pomodoro cadence)
+const CYCLES_BEFORE_LONG_BREAK = 4;
+let focusTimer = {
+  mode: 'focus',       // 'focus' | 'short' | 'long'
+  remaining: 25 * 60,
+  running: false,
+  intervalId: null,
+  cyclesDone: 0
+};
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false);
+    if (res && res.value){
+      state = JSON.parse(res.value);
+    }
+  }catch(e){
+    // no saved state yet — use defaults
+  }
+}
+
+async function saveState(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+  }catch(e){
+    console.error('Could not save — your changes may not persist.', e);
+  }
+}
+
+function ensureDay(dateStr){
+  if (!state.days[dateStr]){
+    state.days[dateStr] = { done: [], allDone: false };
+  }
+  return state.days[dateStr];
+}
+
+function activeTasks(){
+  return state.tasks.filter(t => !t.disabled);
+}
+
+function recomputeAllDone(dateStr){
+  const rec = ensureDay(dateStr);
+  const active = activeTasks();
+  rec.total = active.length;
+  rec.allDone = active.length > 0 && active.every(t => rec.done.includes(t.id));
+  return rec.allDone;
+}
+
+function checkMedals(){
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+  let earnedNew = false;
+  for (const m of MEDALS){
+    if (state.bestStreak >= m.day && !state.medalsEarned.includes(m.day)){
+      state.medalsEarned.push(m.day);
+      pendingMedalToasts.push({ ...m, kind: 'streak' });
+      earnedNew = true;
+    }
+  }
+  if (earnedNew) publishToLeaderboard();
+}
+
+function checkFocusMedals(){
+  const totalHours = (state.totalFocusMinutes || 0) / 60;
+  let earnedNew = false;
+  for (const m of FOCUS_MEDALS){
+    if (totalHours >= m.hours && !state.focusMedalsEarned.includes(m.hours)){
+      state.focusMedalsEarned.push(m.hours);
+      pendingMedalToasts.push({ ...m, kind: 'focus' });
+      earnedNew = true;
+    }
+  }
+  if (earnedNew) publishToLeaderboard();
+}
+
+function rollover(){
+  const today = todayStr();
+  if (state.lastActiveDate === today){
+    ensureDay(today);
+    return;
+  }
+
+  if (state.lastActiveDate === null){
+    state.lastActiveDate = today;
+    ensureDay(today);
+    return;
+  }
+
+  const prevDate = state.lastActiveDate;
+
+  // If a recovery quest was pending and yesterday wasn't the resolution day, it's lost.
+  if (state.recovery && state.recovery.missedDate !== state.lastActiveDate){
+    state.recovery = null;
+    state.streak = 0;
+  }
+
+  const prevDay = state.days[state.lastActiveDate];
+  const wasRecoveryDay = state.recovery && state.recovery.missedDate;
+
+  if (wasRecoveryDay){
+    // Yesterday was the recovery attempt.
+    const succeeded = prevDay && prevDay.allDone && state.recovery.bonusDone;
+    if (succeeded){
+      state.streak = state.recovery.frozenStreak + 1;
+    } else {
+      state.streak = 0;
+    }
+    state.recovery = null;
+  } else if (prevDay && prevDay.allDone){
+    state.streak += 1;
+  } else {
+    // Missed the day entirely — offer one recovery shot today.
+    state.recovery = {
+      frozenStreak: state.streak,
+      quest: pickQuest(today),
+      missedDate: state.lastActiveDate,
+      bonusDone: false
+    };
+    state.streak = 0;
+  }
+
+  checkMedals();
+
+  // Morning summary — evidence-based end-of-day-review, shown once as the day opens.
+  if (prevDay){
+    morningSummary = {
+      date: prevDate,
+      done: prevDay.done.length,
+      total: prevDay.total || state.tasks.length
+    };
+  }
+
+  state.lastActiveDate = today;
+  ensureDay(today);
+}
+
+function toggleTask(id){
+  const today = todayStr();
+  const rec = ensureDay(today);
+  const idx = rec.done.indexOf(id);
+  if (idx === -1) rec.done.push(id); else rec.done.splice(idx, 1);
+  const wasComplete = prevAllDoneToday;
+  const isComplete = recomputeAllDone(today);
+  if (isComplete && !wasComplete) celebrateListComplete();
+  prevAllDoneToday = isComplete;
+  saveState();
+  render();
+}
+
+function addTask(text){
+  const id = 't' + Date.now();
+  state.tasks.push({ id, text, mit: false, disabled: false });
+  saveState();
+  render();
+}
+
+function toggleMit(id){
+  const t = state.tasks.find(t => t.id === id);
+  if (!t) return;
+  if (!t.mit){
+    const count = state.tasks.filter(x => x.mit).length;
+    if (count >= 3) return; // rule of three — cap at 3 Most Important Tasks
+  }
+  t.mit = !t.mit;
+  saveState();
+  render();
+}
+
+function removeTask(id){
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  const today = todayStr();
+  const rec = ensureDay(today);
+  rec.done = rec.done.filter(x => x !== id);
+  recomputeAllDone(today);
+  saveState();
+  render();
+}
+
+function toggleRecoveryBonus(){
+  if (!state.recovery) return;
+  state.recovery.bonusDone = !state.recovery.bonusDone;
+  saveState();
+  render();
+}
+
+function renderThread(){
+  const today = todayStr();
+  const el = document.getElementById('thread');
+  el.innerHTML = '';
+  for (let i = 13; i >= 0; i--){
+    const d = addDays(today, -i);
+    const rec = state.days[d];
+    const k = document.createElement('div');
+    if (d === today){
+      k.className = 'knot today';
+    } else if (state.recovery && state.recovery.missedDate === d){
+      k.className = 'knot missed';
+    } else if (rec && rec.allDone){
+      k.className = 'knot done';
+    } else if (rec){
+      k.className = 'knot missed';
+    } else {
+      k.className = 'knot future';
+    }
+    k.title = d;
+    el.appendChild(k);
+  }
+}
+
+function renderRecovery(){
+  const slot = document.getElementById('recoverySlot');
+  slot.innerHTML = '';
+  if (!state.recovery) return;
+
+  const box = document.createElement('div');
+  box.className = 'recovery';
+  box.innerHTML = `
+    <div class="eyebrow">Streak at risk</div>
+    <h2>Recover your ${state.recovery.frozenStreak}-day streak</h2>
+    <p>You missed ${state.recovery.missedDate}. Finish today's list and complete this quest before the day ends, and the streak picks up right where it left off. Miss it, and it resets to zero.</p>
+    <label class="recovery-check">
+      <input type="checkbox" id="recoveryCheck" ${state.recovery.bonusDone ? 'checked' : ''}>
+      <span>${state.recovery.quest}</span>
+    </label>
+    <div class="recovery-note">Today's task list still needs to be fully checked off too.</div>
+  `;
+  slot.appendChild(box);
+  document.getElementById('recoveryCheck').addEventListener('change', toggleRecoveryBonus);
+}
+
+function renderTasks(){
+  const today = todayStr();
+  const rec = ensureDay(today);
+  const card = document.getElementById('taskCard');
+  card.innerHTML = '';
+
+  const active = activeTasks();
+
+  if (active.length === 0){
+    card.innerHTML = '<div class="empty">No active tasks yet — add one below, or turn on a routine.</div>';
+  } else {
+    for (const t of active){
+      const isDone = rec.done.includes(t.id);
+      const row = document.createElement('div');
+      row.className = 'task' + (isDone ? ' done' : '');
+      row.innerHTML = `
+        <input type="checkbox" ${isDone ? 'checked' : ''} data-id="${t.id}">
+        <button class="mit-btn ${t.mit ? 'on' : ''}" data-mit="${t.id}" title="Mark as a Most Important Task">★</button>
+        <span>${escapeHtml(t.text)}</span>
+        <button data-remove="${t.id}" aria-label="Remove task">✕</button>
+      `;
+      card.appendChild(row);
+    }
+  }
+
+  card.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => toggleTask(cb.dataset.id));
+  });
+  card.querySelectorAll('button[data-remove]').forEach(btn => {
+    btn.addEventListener('click', () => removeTask(btn.dataset.remove));
+  });
+  card.querySelectorAll('button[data-mit]').forEach(btn => {
+    btn.addEventListener('click', () => toggleMit(btn.dataset.mit));
+  });
+
+  const total = active.length;
+  const done = active.filter(t => rec.done.includes(t.id)).length;
+  document.getElementById('progressLine').textContent =
+    total === 0 ? '' : `${done} of ${total} done today`;
+
+  const noteEl = document.getElementById('capacityNote');
+  if (state.capacity){
+    const { min, max } = state.capacity;
+    if (total > max){
+      noteEl.className = 'capacity-note over';
+      noteEl.textContent = `That's more than your usual ${min}–${max} — longer lists tend to lower completion rates. Consider trimming.`;
+    } else {
+      noteEl.className = 'capacity-note';
+      noteEl.textContent = `Your target: ${min}–${max} tasks a day.`;
+    }
+  } else {
+    noteEl.textContent = '';
+  }
+}
+
+function addRoutine(name, linesText){
+  const lines = linesText.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return;
+  const routineId = 'r' + Date.now();
+  const taskIds = [];
+  lines.forEach((text, i) => {
+    const tid = routineId + '_' + i;
+    state.tasks.push({ id: tid, text, mit: false, disabled: false, routineId });
+    taskIds.push(tid);
+  });
+  state.routines.push({ id: routineId, name: name || 'Routine', taskIds, active: true });
+  recomputeAllDone(todayStr());
+  saveState();
+  render();
+}
+
+function toggleRoutine(id){
+  const routine = state.routines.find(r => r.id === id);
+  if (!routine) return;
+  routine.active = !routine.active;
+  state.tasks.forEach(t => {
+    if (t.routineId === id) t.disabled = !routine.active;
+  });
+  recomputeAllDone(todayStr());
+  saveState();
+  render();
+}
+
+function deleteRoutine(id){
+  state.routines = state.routines.filter(r => r.id !== id);
+  state.tasks = state.tasks.filter(t => t.routineId !== id);
+  recomputeAllDone(todayStr());
+  saveState();
+  render();
+}
+function formatTime(seconds){
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+function focusModeLength(mode){
+  const s = state.focusSettings || { focus: 25, short: 5, long: 15 };
+  if (mode === 'short') return s.short * 60;
+  if (mode === 'long') return s.long * 60;
+  return s.focus * 60;
+}
+
+function focusModeLabel(mode){
+  if (mode === 'short') return 'Short break';
+  if (mode === 'long') return 'Long break';
+  return 'Focus session';
+}
+
+function renderFocusTimer(){
+  const modeEl = document.getElementById('focusModeLabel');
+  const timeEl = document.getElementById('focusTimeDisplay');
+  const startBtn = document.getElementById('focusStartPause');
+  if (!modeEl || !timeEl || !startBtn) return; // page not mounted yet
+  modeEl.textContent = focusModeLabel(focusTimer.mode);
+  timeEl.textContent = formatTime(focusTimer.remaining);
+  startBtn.textContent = focusTimer.running ? 'Pause' : 'Start';
+
+  const s = state.focusSettings || { focus: 25, short: 5, long: 15 };
+  const focusInput = document.getElementById('focusLenInput');
+  const shortInput = document.getElementById('shortLenInput');
+  const longInput = document.getElementById('longLenInput');
+  if (focusInput && document.activeElement !== focusInput) focusInput.value = s.focus;
+  if (shortInput && document.activeElement !== shortInput) shortInput.value = s.short;
+  if (longInput && document.activeElement !== longInput) longInput.value = s.long;
+}
+
+function updateFocusSetting(key, minutes){
+  const clamped = Math.max(1, Math.min(180, Math.round(minutes) || 1));
+  if (!state.focusSettings) state.focusSettings = { focus: 25, short: 5, long: 15 };
+  state.focusSettings[key] = clamped;
+  saveState();
+  // If that mode isn't currently running, apply the new length right away.
+  if (focusTimer.mode === key && !focusTimer.running){
+    focusTimer.remaining = focusModeLength(focusTimer.mode);
+  }
+  renderFocusTimer();
+}
+
+function focusTick(){
+  focusTimer.remaining -= 1;
+  if (focusTimer.remaining <= 0){
+    completeFocusSegment();
+    return;
+  }
+  renderFocusTimer();
+}
+
+function startFocusTimer(){
+  if (focusTimer.running) return;
+  focusTimer.running = true;
+  focusTimer.intervalId = setInterval(focusTick, 1000);
+  renderFocusTimer();
+}
+
+function pauseFocusTimer(){
+  focusTimer.running = false;
+  clearInterval(focusTimer.intervalId);
+  renderFocusTimer();
+}
+
+function resetFocusTimer(){
+  pauseFocusTimer();
+  focusTimer.remaining = focusModeLength(focusTimer.mode);
+  renderFocusTimer();
+}
+
+function skipFocusSegment(){
+  pauseFocusTimer();
+  advanceFocusMode(false);
+}
+
+function completeFocusSegment(){
+  pauseFocusTimer();
+  advanceFocusMode(true);
+}
+
+function advanceFocusMode(logSession){
+  if (focusTimer.mode === 'focus'){
+    if (logSession) logFocusSession();
+    focusTimer.cyclesDone += 1;
+    focusTimer.mode = (focusTimer.cyclesDone % CYCLES_BEFORE_LONG_BREAK === 0) ? 'long' : 'short';
+  } else {
+    focusTimer.mode = 'focus';
+  }
+  focusTimer.remaining = focusModeLength(focusTimer.mode);
+  renderFocusTimer();
+  renderSparks();
+  renderFocusStats();
+  renderFocusMedals();
+  renderToasts();
+}
+
+function logFocusSession(){
+  const today = todayStr();
+  const rec = ensureDay(today);
+  const minutes = state.focusSettings ? state.focusSettings.focus : 25;
+  rec.focusSessions = (rec.focusSessions || 0) + 1;
+  rec.focusMinutes = (rec.focusMinutes || 0) + minutes;
+  state.totalFocusMinutes = (state.totalFocusMinutes || 0) + minutes;
+  checkFocusMedals();
+  saveState();
+}
+
+function renderSparks(){
+  const today = todayStr();
+  const rec = state.days[today];
+  const count = rec ? (rec.focusSessions || 0) : 0;
+  document.getElementById('sparkCount').textContent = count;
+  const grid = document.getElementById('sparkGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < count; i++){
+    const s = document.createElement('div');
+    s.className = 'spark';
+    grid.appendChild(s);
+  }
+  if (count === 0){
+    grid.innerHTML = '<div class="empty" style="border:none;padding:8px 0;">Complete a focus session to earn your first spark.</div>';
+  }
+}
+
+function totalFocusMinutes(days){
+  const today = todayStr();
+  let total = 0;
+  for (let i = 0; i <= days; i++){
+    const d = i === 0 ? today : addDays(today, -i);
+    const rec = state.days[d];
+    if (rec) total += rec.focusMinutes || 0;
+  }
+  return total;
+}
+
+function renderFocusStats(){
+  const el = document.getElementById('focusStatsCard');
+  if (!el) return;
+  const today = todayStr();
+  const rec = state.days[today];
+  const sessionsToday = rec ? (rec.focusSessions || 0) : 0;
+  const lifetimeMinutes = state.totalFocusMinutes || 0;
+  const lifetimeHours = Math.floor(lifetimeMinutes / 60);
+  const lifetimeRemainderMin = lifetimeMinutes % 60;
+  el.innerHTML = `
+    <div class="stat"><div class="stat-num">${sessionsToday}</div><div class="stat-label">sessions today</div></div>
+    <div class="stat"><div class="stat-num">${totalFocusMinutes(0)}</div><div class="stat-label">minutes today</div></div>
+    <div class="stat"><div class="stat-num">${totalFocusMinutes(6)}</div><div class="stat-label">minutes, last 7 days</div></div>
+    <div class="stat"><div class="stat-num">${lifetimeHours}h ${lifetimeRemainderMin}m</div><div class="stat-label">total time in focus</div></div>
+  `;
+}
+
+function renderFocusMedals(){
+  const shelf = document.getElementById('focusMedalShelf');
+  if (!shelf) return;
+  shelf.innerHTML = '';
+  const nextIdx = FOCUS_MEDALS.findIndex(m => !state.focusMedalsEarned.includes(m.hours));
+  FOCUS_MEDALS.forEach((m, i) => {
+    const earned = state.focusMedalsEarned.includes(m.hours);
+    const el = document.createElement('div');
+    el.className = 'medal' + (earned ? ' earned' : (i === nextIdx ? ' next' : ''));
+    el.style.background = earned ? m.color : 'transparent';
+    el.style.borderColor = (!earned && i === nextIdx) ? m.color : 'transparent';
+    el.textContent = m.hours + 'h';
+    el.title = earned ? `${m.hours} hours in focus — earned` : `${m.hours} hours in focus`;
+    shelf.appendChild(el);
+  });
+}
+
+function ensurePlayerId(){
+  if (!state.playerId){
+    state.playerId = 'p' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+  }
+}
+
+async function publishToLeaderboard(){
+  ensurePlayerId();
+  const entry = {
+    name: state.playerName && state.playerName.trim() ? state.playerName.trim() : 'Anonymous',
+    streakMedals: state.medalsEarned.length,
+    focusMedals: state.focusMedalsEarned.length,
+    bestStreak: state.bestStreak || 0,
+    totalFocusHours: Math.round((state.totalFocusMinutes || 0) / 60),
+    updatedAt: Date.now()
+  };
+  try{
+    await window.storage.set('leaderboard:' + state.playerId, JSON.stringify(entry), true);
+  }catch(e){
+    console.error('Could not publish to the leaderboard.', e);
+  }
+}
+
+async function renderLeaderboard(){
+  const list = document.getElementById('leaderboardList');
+  if (!list) return;
+  list.innerHTML = '<div class="empty" style="border:1px solid var(--line);border-radius:16px;">Loading rankings…</div>';
+
+  ensurePlayerId();
+
+  let keys = [];
+  try{
+    const res = await window.storage.list('leaderboard:', true);
+    keys = (res && res.keys) ? res.keys : [];
+  }catch(e){
+    list.innerHTML = '<div class="empty" style="border:1px solid var(--line);border-radius:16px;">Couldn\'t load the leaderboard right now.</div>';
+    console.error('Leaderboard list failed.', e);
+    return;
+  }
+
+  const entries = [];
+  for (const key of keys){
+    try{
+      const res = await window.storage.get(key, true);
+      if (res && res.value){
+        const data = JSON.parse(res.value);
+        entries.push({ id: key.replace('leaderboard:', ''), ...data });
+      }
+    }catch(e){
+      // skip unreadable entries
+    }
+  }
+
+  if (entries.length === 0){
+    list.innerHTML = '<div class="empty" style="border:1px solid var(--line);border-radius:16px;">No one on the board yet — be the first to earn a medal.</div>';
+    return;
+  }
+
+  entries.forEach(e => { e.total = (e.streakMedals || 0) + (e.focusMedals || 0); });
+  entries.sort((a, b) => b.total - a.total || b.bestStreak - a.bestStreak);
+
+  list.innerHTML = entries.map((e, i) => `
+    <div class="lb-row ${e.id === state.playerId ? 'me' : ''}">
+      <div class="lb-rank">#${i + 1}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(e.name || 'Anonymous')}${e.id === state.playerId ? ' (you)' : ''}</div>
+        <div class="lb-sub">${e.streakMedals || 0} streak medal${(e.streakMedals || 0) === 1 ? '' : 's'} · ${e.focusMedals || 0} focus medal${(e.focusMedals || 0) === 1 ? '' : 's'} · best streak ${e.bestStreak || 0}d</div>
+      </div>
+      <div class="lb-total">${e.total}</div>
+    </div>
+  `).join('');
+}
+
+// ---- Support chat ----
+let chatMessages = []; // transient — not persisted, resets on reload
+
+function buildSupportSystemPrompt(){
+  const active = activeTasks().length;
+  return `You are the in-app support assistant for Thread, a habit-consistency web app. Answer questions about how to use it, concisely and in a friendly tone (under ~120 words unless more detail is clearly needed).
+
+How Thread works:
+- A daily to-do list. The streak increases by 1 only when every active task for the day is checked off.
+- Missing a day doesn't erase the streak right away — the next time the app opens, a one-time recovery quest appears. Completing it, plus that day's full list, restores the streak; otherwise it resets to 0.
+- Streak medals unlock every 10 days of best streak (10 up to 150), each a different color, and stay earned even if the streak later resets.
+- Routines bundle recurring tasks (like "Morning routine") that can be switched on or off as a group from the Routines section.
+- The Focus page has a Pomodoro-style timer with editable focus/short-break/long-break lengths. Finishing a focus session earns a "spark" and counts toward Focus medals, awarded every 10 cumulative hours of focus time up to 150.
+- The Leaderboard combines a person's streak medals and focus medals into one score and ranks them against everyone else using the app, under a display name they choose. It's shared data — names and medal counts are visible to other users.
+- Access is via a one-time code or a subscription page.
+- There's an About Us page describing the app's philosophy.
+
+You cannot see the user's actual task list or notes — only this snapshot: current streak ${state.streak} day(s), best streak ${state.bestStreak} day(s), ${active} active task(s) today, ${state.medalsEarned.length} streak medal(s) earned, ${state.focusMedalsEarned.length} focus medal(s) earned. If asked something unrelated to Thread, politely say you can only help with using this app.`;
+}
+
+function renderChat(){
+  const win = document.getElementById('chatWindow');
+  if (!win) return;
+  if (chatMessages.length === 0){
+    win.innerHTML = '<div class="empty" style="border:none;padding:8px 0;">Ask anything about how Thread works — streaks, recovery, medals, routines, focus sessions, or the leaderboard.</div>';
+  } else {
+    win.innerHTML = chatMessages.map(m =>
+      `<div class="chat-bubble ${m.role}${m._typing ? ' typing' : ''}">${escapeHtml(m.content)}</div>`
+    ).join('');
+  }
+  win.scrollTop = win.scrollHeight;
+}
+
+async function sendChatMessage(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  chatMessages.push({ role: 'user', content: text });
+  input.value = '';
+  renderChat();
+
+  chatMessages.push({ role: 'assistant', content: 'Thinking…', _typing: true });
+  renderChat();
+
+  try{
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        system: buildSupportSystemPrompt(),
+        messages: chatMessages
+          .filter(m => !m._typing)
+          .map(m => ({ role: m.role, content: m.content }))
+      })
+    });
+    const data = await response.json();
+    const reply = (data.content || [])
+      .map(block => block.text || '')
+      .filter(Boolean)
+      .join('\n')
+      .trim() || "I couldn't come up with a response just now — try asking again.";
+
+    chatMessages = chatMessages.filter(m => !m._typing);
+    chatMessages.push({ role: 'assistant', content: reply });
+  }catch(e){
+    console.error('Support chat error', e);
+    chatMessages = chatMessages.filter(m => !m._typing);
+    chatMessages.push({ role: 'assistant', content: "Something went wrong reaching support just now. Please try again in a moment." });
+  }
+  renderChat();
+}
+
+function celebrateListComplete(){
+  const card = document.getElementById('taskCard');
+  if (card){
+    card.classList.remove('celebrate');
+    void card.offsetWidth; // restart animation
+    card.classList.add('celebrate');
+  }
+}
+
+function renderRoutines(){
+  const slot = document.getElementById('routinesSlot');
+  if (state.routines.length === 0){
+    slot.innerHTML = '<div class="empty" style="border:1px solid var(--line);border-radius:16px;margin-bottom:12px;">No routines yet — bundle recurring tasks like "Morning routine" below.</div>';
+  } else {
+    slot.innerHTML = state.routines.map(r => `
+      <div class="routine-card">
+        <div class="routine-head">
+          <div>
+            <div class="routine-name">${escapeHtml(r.name)}</div>
+            <div class="routine-sub">${r.taskIds.length} task${r.taskIds.length === 1 ? '' : 's'} · ${r.active ? 'active' : 'paused'}</div>
+          </div>
+          <div class="routine-actions">
+            <div class="switch ${r.active ? 'on' : ''}" data-toggle="${r.id}"></div>
+            <button data-delete-routine="${r.id}" aria-label="Delete routine">✕</button>
+          </div>
+        </div>
+        <div class="routine-tasks">${r.taskIds
+          .map(tid => state.tasks.find(t => t.id === tid))
+          .filter(Boolean)
+          .map(t => escapeHtml(t.text))
+          .join(' · ')}</div>
+      </div>
+    `).join('');
+  }
+
+  slot.querySelectorAll('[data-toggle]').forEach(el => {
+    el.addEventListener('click', () => toggleRoutine(el.dataset.toggle));
+  });
+  slot.querySelectorAll('[data-delete-routine]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (confirm('Delete this routine and its tasks?')) deleteRoutine(el.dataset.deleteRoutine);
+    });
+  });
+}
+
+function renderRoutineForm(){
+  const slot = document.getElementById('routineFormSlot');
+  if (!routineFormOpen){
+    slot.innerHTML = `<button class="new-routine-btn" id="openRoutineForm">+ New routine</button>`;
+    document.getElementById('openRoutineForm').addEventListener('click', () => {
+      routineFormOpen = true;
+      renderRoutineForm();
+    });
+    return;
+  }
+
+  slot.innerHTML = `
+    <div class="routine-form">
+      <label for="routineName">Routine name</label>
+      <input type="text" id="routineName" placeholder="Morning routine" maxlength="60">
+      <label for="routineTasks">Tasks (one per line)</label>
+      <textarea id="routineTasks" placeholder="Make the bed
+Drink a glass of water
+Stretch for 5 minutes"></textarea>
+      <div class="routine-form-actions">
+        <button class="primary" id="saveRoutine">Create routine</button>
+        <button class="cancel" id="cancelRoutine">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('saveRoutine').addEventListener('click', () => {
+    const name = document.getElementById('routineName').value.trim();
+    const tasks = document.getElementById('routineTasks').value;
+    addRoutine(name, tasks);
+    routineFormOpen = false;
+    renderRoutineForm();
+  });
+  document.getElementById('cancelRoutine').addEventListener('click', () => {
+    routineFormOpen = false;
+    renderRoutineForm();
+  });
+}
+
+function renderMedals(){
+  const shelf = document.getElementById('medalShelf');
+  shelf.innerHTML = '';
+  const nextIdx = MEDALS.findIndex(m => !state.medalsEarned.includes(m.day));
+  MEDALS.forEach((m, i) => {
+    const earned = state.medalsEarned.includes(m.day);
+    const el = document.createElement('div');
+    el.className = 'medal' + (earned ? ' earned' : (i === nextIdx ? ' next' : ''));
+    el.style.background = earned ? m.color : 'transparent';
+    el.style.borderColor = (!earned && i === nextIdx) ? m.color : 'transparent';
+    el.textContent = m.day;
+    el.title = earned ? `${m.day}-day streak — earned` : `${m.day}-day streak`;
+    shelf.appendChild(el);
+  });
+}
+
+function computeCompletionRate(days){
+  const today = todayStr();
+  let counted = 0, completed = 0;
+  for (let i = 1; i <= days; i++){
+    const d = addDays(today, -i);
+    const rec = state.days[d];
+    if (rec){
+      counted++;
+      if (rec.allDone) completed++;
+    }
+  }
+  return counted === 0 ? null : Math.round((completed / counted) * 100);
+}
+
+function renderStats(){
+  const el = document.getElementById('statsCard');
+  const r7 = computeCompletionRate(7);
+  const r30 = computeCompletionRate(30);
+  el.innerHTML = `
+    <div class="stat"><div class="stat-num">${state.streak}</div><div class="stat-label">current streak</div></div>
+    <div class="stat"><div class="stat-num">${state.bestStreak}</div><div class="stat-label">best streak</div></div>
+    <div class="stat"><div class="stat-num">${r7 === null ? '—' : r7 + '%'}</div><div class="stat-label">last 7 days</div></div>
+    <div class="stat"><div class="stat-num">${r30 === null ? '—' : r30 + '%'}</div><div class="stat-label">last 30 days</div></div>
+  `;
+}
+
+function renderSummary(){
+  const slot = document.getElementById('summarySlot');
+  if (!morningSummary){ slot.innerHTML = ''; return; }
+  const { done, total } = morningSummary;
+  const msg = total > 0 && done === total
+    ? `Yesterday: ${done}/${total} done — nice work.`
+    : total > 0
+      ? `Yesterday: ${done}/${total} done. Fresh list today.`
+      : `Yesterday had no tasks logged. Fresh list today.`;
+  slot.innerHTML = `<div class="summary-banner"><span>${msg}</span><button id="dismissSummary" aria-label="Dismiss">✕</button></div>`;
+  document.getElementById('dismissSummary').addEventListener('click', () => {
+    morningSummary = null;
+    renderSummary();
+  });
+}
+
+function renderToasts(){
+  if (pendingMedalToasts.length === 0) return;
+  const m = pendingMedalToasts.shift();
+  const slot = document.getElementById('toastSlot');
+  const isFocus = m.kind === 'focus';
+  const badgeText = isFocus ? m.hours + 'h' : m.day;
+  const message = isFocus
+    ? `New focus medal unlocked — ${m.hours} hours in focus!`
+    : `New medal unlocked — ${m.day}-day streak!`;
+  slot.innerHTML = `
+    <div class="toast">
+      <div class="medal" style="background:${m.color}">${badgeText}</div>
+      <span>${message}</span>
+    </div>
+  `;
+  setTimeout(() => {
+    slot.innerHTML = '';
+    renderToasts();
+  }, 3200);
+}
+
+let googleButtonInitialized = false;
+const GOOGLE_CONFIGURED = !GOOGLE_CLIENT_ID.startsWith('REPLACE_WITH_');
+
+function decodeJwt(token){
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(
+    atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+  );
+  return JSON.parse(jsonPayload);
+}
+
+function handleGoogleCredential(response){
+  try{
+    const payload = decodeJwt(response.credential);
+    state.account = { name: payload.name || 'Google user', email: payload.email || '' };
+    saveState();
+    renderAccount();
+  }catch(e){
+    console.error('Could not read Google credential.', e);
+  }
+}
+
+function renderAccount(){
+  const el = document.getElementById('accountCard');
+
+  if (state.account){
+    el.innerHTML = `
+      <div><strong>${escapeHtml(state.account.name)}</strong><div class="note">${escapeHtml(state.account.email)}</div></div>
+      <button class="google-btn" id="signOutBtn">Sign out</button>
+    `;
+    document.getElementById('signOutBtn').addEventListener('click', () => {
+      state.account = null;
+      googleButtonInitialized = false;
+      saveState();
+      renderAccount();
+    });
+    return;
+  }
+
+  if (!GOOGLE_CONFIGURED){
+    el.innerHTML = `
+      <div class="note">Sign in isn't functional in this preview — Google requires a verified domain. It'll work once this is hosted on your own site and GOOGLE_CLIENT_ID is set (see the setup steps).</div>
+      <button class="google-btn" id="googleBtn">Continue with Google</button>
+    `;
+    document.getElementById('googleBtn').addEventListener('click', () => {
+      alert("Google Sign-In needs a registered OAuth client tied to a real domain — it can't complete inside this preview. See the setup steps for wiring it up on your own deployment.");
+    });
+    return;
+  }
+
+  el.innerHTML = `<div id="googleSignInDiv"></div>`;
+
+  try{
+    if (typeof google === 'undefined' || !google.accounts) throw new Error('Google Identity script not loaded yet');
+    if (!googleButtonInitialized){
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential
+      });
+      googleButtonInitialized = true;
+    }
+    google.accounts.id.renderButton(document.getElementById('googleSignInDiv'), {
+      theme: 'filled_black',
+      size: 'medium',
+      shape: 'pill'
+    });
+  }catch(e){
+    el.innerHTML = `<div class="note">Google Sign-In couldn't load. Confirm this page is served from an origin authorized in your Google Cloud OAuth client.</div>`;
+    console.error('Google Sign-In render failed.', e);
+  }
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function render(){
+  document.getElementById('streakNum').textContent = state.streak;
+  renderThread();
+  renderRecovery();
+  renderTasks();
+  renderRoutines();
+  renderRoutineForm();
+  renderMedals();
+  renderStats();
+  renderSummary();
+  renderAccount();
+}
+
+function renderOnboarding(){
+  const slot = document.getElementById('onboardOverlay');
+
+  if (state.onboarded){
+    slot.innerHTML = '';
+    return;
+  }
+
+  if (!state._onboardStep) state._onboardStep = 'ask';
+
+  if (state._onboardStep === 'ask'){
+    slot.innerHTML = `
+      <div class="overlay"><div class="modal">
+        <div class="eyebrow">Before you start</div>
+        <h2>How much focused time do you usually have in a day?</h2>
+        <p>Long to-do lists tend to cause decision fatigue and lower completion rates. We'll use this to suggest a list size you can actually finish.</p>
+        ${HOURS_BANDS.map(b => `<button class="opt-btn" data-band="${b.id}">${b.label}<small>${b.sub}</small></button>`).join('')}
+      </div></div>
+    `;
+    slot.querySelectorAll('.opt-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const band = HOURS_BANDS.find(b => b.id === btn.dataset.band);
+        state.capacity = { hours: band.label, min: band.min, max: band.max };
+        state._onboardStep = 'result';
+        saveState();
+        renderOnboarding();
+      });
+    });
+  } else if (state._onboardStep === 'result'){
+    const c = state.capacity;
+    slot.innerHTML = `
+      <div class="overlay"><div class="modal">
+        <div class="eyebrow">Your target</div>
+        <h2>Aim for ${c.min}–${c.max} tasks a day</h2>
+        <p>Pick 1–3 as your Most Important — tap the star on any task. A finished, realistic list builds the streak faster than a padded one. Aim for finishing roughly 70–80% of days, not a perfect 100%.</p>
+        <button class="primary-btn" id="finishOnboard">Start my list</button>
+      </div></div>
+    `;
+    document.getElementById('finishOnboard').addEventListener('click', () => {
+      state.onboarded = true;
+      saveState();
+      renderOnboarding();
+      render();
+    });
+  }
+}
+
+function resetOnboarding(){
+  state.onboarded = false;
+  state._onboardStep = 'ask';
+  saveState();
+  renderOnboarding();
+}
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  const input = document.getElementById('newTask');
+  const text = input.value.trim();
+  if (text){
+    addTask(text);
+    input.value = '';
+  }
+});
+document.getElementById('newTask').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('addBtn').click();
+});
+
+document.getElementById('redoSetup').addEventListener('click', (e) => {
+  e.preventDefault();
+  resetOnboarding();
+});
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const page = btn.dataset.page;
+    document.getElementById('appPage').style.display = page === 'app' ? '' : 'none';
+    document.getElementById('focusPage').style.display = page === 'focus' ? '' : 'none';
+    document.getElementById('leaderboardPage').style.display = page === 'leaderboard' ? '' : 'none';
+    document.getElementById('supportPage').style.display = page === 'support' ? '' : 'none';
+    document.getElementById('aboutPage').style.display = page === 'about' ? '' : 'none';
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b === btn));
+    if (page === 'focus'){
+      renderFocusTimer();
+      renderSparks();
+      renderFocusStats();
+      renderFocusMedals();
+    }
+    if (page === 'leaderboard'){
+      document.getElementById('playerNameInput').value = state.playerName || '';
+      renderLeaderboard();
+    }
+    if (page === 'support'){
+      renderChat();
+    }
+  });
+});
+
+document.getElementById('savePlayerName').addEventListener('click', async () => {
+  state.playerName = document.getElementById('playerNameInput').value.trim();
+  await saveState();
+  await publishToLeaderboard();
+  renderLeaderboard();
+});
+document.getElementById('refreshLeaderboard').addEventListener('click', renderLeaderboard);
+
+document.getElementById('chatSend').addEventListener('click', sendChatMessage);
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChatMessage();
+});
+
+document.getElementById('focusStartPause').addEventListener('click', () => {
+  if (focusTimer.running) pauseFocusTimer(); else startFocusTimer();
+});
+document.getElementById('focusReset').addEventListener('click', resetFocusTimer);
+document.getElementById('focusSkip').addEventListener('click', skipFocusSegment);
+
+document.getElementById('focusLenInput').addEventListener('change', (e) => {
+  updateFocusSetting('focus', parseInt(e.target.value, 10));
+});
+document.getElementById('shortLenInput').addEventListener('change', (e) => {
+  updateFocusSetting('short', parseInt(e.target.value, 10));
+});
+document.getElementById('longLenInput').addEventListener('change', (e) => {
+  updateFocusSetting('long', parseInt(e.target.value, 10));
+});
+
+(async function init(){
+  await loadState();
+  if (!state.focusSettings) state.focusSettings = { focus: 25, short: 5, long: 15 };
+  if (typeof state.totalFocusMinutes !== 'number') state.totalFocusMinutes = 0;
+  if (!state.focusMedalsEarned) state.focusMedalsEarned = [];
+  if (typeof state.playerName !== 'string') state.playerName = '';
+
+  rollover();
+  ensurePlayerId();
+  await saveState();
+  focusTimer.remaining = focusModeLength(focusTimer.mode);
+  const today = todayStr();
+  const todayRec = state.days[today];
+  prevAllDoneToday = !!(todayRec && todayRec.allDone);
+  render();
+  renderOnboarding();
+  renderToasts();
+})();
+
+if ('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch((e) => {
+      console.error('Service worker registration failed.', e);
+    });
+  });
+}
+</script>
+</body>
+</html>
